@@ -1,46 +1,86 @@
+// Command backend-auth runs the authentication API server.
 package main
 
 import (
-	"fmt"
-	"log"
+	"context"
+	"errors"
+	"log/slog"
+	"net"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"backend-auth/database"
-	"backend-auth/handlers"
-	"backend-auth/middleware"
+	"backend-auth/internal/api"
+	"backend-auth/internal/auth"
+	"backend-auth/internal/config"
+	"backend-auth/internal/store"
+	"backend-auth/web"
 )
 
-// cors wraps a handler to add CORS headers
-func cors(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next(w, r)
+func main() {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
+	if err := run(); err != nil {
+		slog.Error("server stopped", "err", err)
+		os.Exit(1)
 	}
 }
 
-func main() {
-	// Initialize SQLite database
-	database.InitDB()
+func run() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
 
-	// Serve static frontend files
-	http.Handle("/", http.FileServer(http.Dir("./static")))
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	// Register API routes with CORS
-	http.HandleFunc("/signup", cors(handlers.Signup))
-	http.HandleFunc("/login", cors(handlers.Login))
-	http.HandleFunc("/profile", cors(middleware.JWTAuth(handlers.Profile)))
-	http.HandleFunc("/users", cors(middleware.JWTAuth(handlers.GetUsers)))
+	users, err := store.Open(ctx, cfg.DatabasePath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = users.Close() }()
 
-	// Start server
-	fmt.Println("Server running on port 8080")
-	fmt.Println("Frontend: http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	if cfg.Admin.Enabled() {
+		if err := api.EnsureAdmin(ctx, users, cfg.Admin.Name, cfg.Admin.Email, cfg.Admin.Password); err != nil {
+			return err
+		}
+	}
+
+	srv := api.NewServer(api.Options{
+		Users:          users,
+		Tokens:         auth.NewTokenManager(cfg.JWTSecret, cfg.TokenTTL),
+		AllowedOrigins: cfg.AllowedOrigins,
+		Static:         web.Static(),
+	})
+
+	httpServer := &http.Server{
+		Addr:              net.JoinHostPort("", cfg.Port),
+		Handler:           srv.Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		slog.Info("server listening", "addr", "http://localhost:"+cfg.Port)
+		errCh <- httpServer.ListenAndServe()
+	}()
+
+	select {
+	case err := <-errCh:
+		if !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
+	case <-ctx.Done():
+	}
+
+	slog.Info("shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return httpServer.Shutdown(shutdownCtx)
 }

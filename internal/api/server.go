@@ -5,6 +5,8 @@ import (
 	"context"
 	"io/fs"
 	"net/http"
+	"path"
+	"strings"
 
 	"backend-auth/internal/auth"
 	"backend-auth/internal/store"
@@ -61,7 +63,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /login", methodNotAllowed(http.MethodPost))
 
 	if s.static != nil {
-		mux.Handle("GET /", http.FileServerFS(s.static))
+		mux.Handle("GET /", staticHandler(s.static))
 	}
 
 	return logRequests(securityHeaders(cors(s.allowedOrigins, mux)))
@@ -72,4 +74,32 @@ func methodNotAllowed(allow string) http.HandlerFunc {
 		w.Header().Set("Allow", allow)
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
+}
+
+// staticHandler serves the embedded tester. Paths that don't match a file get
+// a 404: the 404.html page for browsers, a JSON error for API clients.
+func staticHandler(fsys fs.FS) http.Handler {
+	files := http.FileServerFS(fsys)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		name := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
+		if name != "" {
+			if _, err := fs.Stat(fsys, name); err != nil {
+				notFound(w, r, fsys)
+				return
+			}
+		}
+		files.ServeHTTP(w, r)
+	})
+}
+
+func notFound(w http.ResponseWriter, r *http.Request, fsys fs.FS) {
+	if strings.Contains(r.Header.Get("Accept"), "text/html") {
+		if page, err := fs.ReadFile(fsys, "404.html"); err == nil {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write(page)
+			return
+		}
+	}
+	writeError(w, http.StatusNotFound, "not found")
 }

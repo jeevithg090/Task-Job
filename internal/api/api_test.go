@@ -42,7 +42,10 @@ func newTestEnv(t *testing.T, origins ...string) *testEnv {
 		Users:          st,
 		Tokens:         tokens,
 		AllowedOrigins: origins,
-		Static:         fstest.MapFS{"index.html": {Data: []byte("<h1>tester</h1>")}},
+		Static: fstest.MapFS{
+			"index.html": {Data: []byte("<h1>tester</h1>")},
+			"404.html":   {Data: []byte("<h1>missing</h1>")},
+		},
 	})
 	hs := httptest.NewServer(s.Handler())
 	t.Cleanup(func() {
@@ -310,5 +313,44 @@ func TestCORS(t *testing.T) {
 	}
 	if res := preflight("https://evil.example"); res.Header.Get("Access-Control-Allow-Origin") != "" {
 		t.Fatalf("disallowed origin got CORS headers: %v", res.Header)
+	}
+}
+
+func TestStaticNotFound(t *testing.T) {
+	env := newTestEnv(t)
+
+	get := func(path, accept string) (*http.Response, string) {
+		t.Helper()
+		req, _ := http.NewRequest(http.MethodGet, env.srv.URL+path, nil)
+		if accept != "" {
+			req.Header.Set("Accept", accept)
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = res.Body.Close() }()
+		b, _ := io.ReadAll(res.Body)
+		return res, string(b)
+	}
+
+	res, body := get("/no-such-page", "text/html,application/xhtml+xml")
+	if res.StatusCode != http.StatusNotFound || !strings.Contains(body, "missing") ||
+		!strings.HasPrefix(res.Header.Get("Content-Type"), "text/html") {
+		t.Fatalf("browser 404 = %d %q %q", res.StatusCode, res.Header.Get("Content-Type"), body)
+	}
+
+	res, body = get("/no-such-page", "application/json")
+	if res.StatusCode != http.StatusNotFound || !strings.Contains(body, `"error":"not found"`) {
+		t.Fatalf("API 404 = %d %q", res.StatusCode, body)
+	}
+
+	res, body = get("/", "text/html")
+	if res.StatusCode != http.StatusOK || !strings.Contains(body, "tester") {
+		t.Fatalf("index = %d %q", res.StatusCode, body)
+	}
+
+	if csp := res.Header.Get("Content-Security-Policy"); strings.Contains(csp, "unsafe-inline") {
+		t.Fatalf("CSP allows inline code: %q", csp)
 	}
 }

@@ -2,824 +2,232 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Interactive tester for the Backend Auth service: sign up, log in, and call JWT-protected endpoints.">
-  <meta name="color-scheme" content="dark">
-  <title>Backend Auth — API Tester</title>
-  <link rel="icon" href="data:,">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg: #0a0a0f;
-      --surface: #12121a;
-      --surface-2: #1a1a26;
-      --border: #2a2a3a;
-      --border-glow: #3b3b5c;
-      --text: #e4e4ef;
-      --text-dim: #8888a0;
-      --accent: #7c5cfc;
-      --accent-soft: #7c5cfc22;
-      --green: #34d399;
-      --green-soft: #34d39918;
-      --red: #f87171;
-      --red-soft: #f8717118;
-      --yellow: #fbbf24;
-      --yellow-soft: #fbbf2418;
-      --blue: #60a5fa;
-      --radius: 12px;
-      --radius-sm: 8px;
-    }
-
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      line-height: 1.6;
-    }
-
-    /* ── Header ── */
-    header {
-      padding: 24px 32px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      backdrop-filter: blur(12px);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(10, 10, 15, 0.93);
-    }
-
-    header h1 {
-      font-size: 1.25rem;
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--accent), var(--blue));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    header h1::before {
-      content: '🔐';
-      -webkit-text-fill-color: initial;
-    }
-
-    .status-pill {
-      font-size: 0.75rem;
-      font-weight: 500;
-      padding: 4px 14px;
-      border-radius: 20px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .status-pill.connected {
-      background: var(--green-soft);
-      color: var(--green);
-      border: 1px solid rgba(52, 211, 153, 0.2);
-    }
-
-    .status-pill .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--green);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
-    /* ── Layout ── */
-    .app {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0;
-      min-height: calc(100vh - 73px);
-    }
-
-    /* ── Left Panel ── */
-    .panel-left {
-      border-right: 1px solid var(--border);
-      overflow-y: auto;
-      max-height: calc(100vh - 73px);
-    }
-
-    /* ── Tabs ── */
-    .tabs {
-      display: flex;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    .tab {
-      padding: 12px 20px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text-dim);
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      transition: all 0.2s;
-      background: none;
-      border-top: none;
-      border-left: none;
-      border-right: none;
-      font-family: inherit;
-    }
-
-    .tab:hover { color: var(--text); }
-    .tab:focus-visible, .btn:focus-visible, .clear-btn:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
-    }
-
-    .sr-only {
-      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation: none !important; transition: none !important; }
-    }
-    .tab.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-    }
-
-    /* ── Tab Content ── */
-    .tab-content { display: none; padding: 24px; }
-    .tab-content.active { display: block; }
-
-    /* ── Form Styles ── */
-    .form-group {
-      margin-bottom: 16px;
-    }
-
-    label {
-      display: block;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--text-dim);
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    input, select {
-      width: 100%;
-      padding: 10px 14px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      font-size: 0.875rem;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      outline: none;
-    }
-
-    input:focus, select:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-soft);
-    }
-
-    input::placeholder { color: var(--text-dim); opacity: 0.5; }
-
-    .btn {
-      width: 100%;
-      padding: 11px 20px;
-      border: none;
-      border-radius: var(--radius-sm);
-      font-family: 'Inter', sans-serif;
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 20px;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent), #6344e0);
-      color: #fff;
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 24px var(--accent-soft);
-    }
-
-    .btn-primary:active { transform: translateY(0); }
-
-    .btn-green {
-      background: linear-gradient(135deg, var(--green), #22b47a);
-      color: #fff;
-    }
-
-    .btn-green:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 24px var(--green-soft);
-    }
-
-    .btn-blue {
-      background: linear-gradient(135deg, var(--blue), #4b90e8);
-      color: #fff;
-    }
-
-    .btn-blue:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 24px rgba(96, 165, 250, 0.15);
-    }
-
-    .btn-yellow {
-      background: linear-gradient(135deg, var(--yellow), #e5a50e);
-      color: #0a0a0f;
-    }
-
-    .btn-yellow:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 24px var(--yellow-soft);
-    }
-
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none !important;
-    }
-
-    /* ── Section Headers ── */
-    .section-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-
-    .section-header .method {
-      font-size: 0.7rem;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 4px;
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .method-post { background: var(--green-soft); color: var(--green); border: 1px solid rgba(52, 211, 153, 0.2); }
-    .method-get { background: rgba(96,165,250,0.12); color: var(--blue); border: 1px solid rgba(96,165,250,0.2); }
-
-    .section-header .endpoint {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: var(--text);
-    }
-
-    /* ── Token Display ── */
-    .token-bar {
-      padding: 16px 24px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .token-bar .label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--text-dim);
-      letter-spacing: 0.05em;
-      margin: 0;
-      white-space: nowrap;
-    }
-
-    .token-display {
-      flex: 1;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      padding: 8px 12px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--yellow);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      min-height: 34px;
-    }
-
-    .token-display.empty {
-      color: var(--text-dim);
-      font-style: italic;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.8rem;
-    }
-
-    /* ── Right Panel (Terminal) ── */
-    .panel-right {
-      display: flex;
-      flex-direction: column;
-      max-height: calc(100vh - 73px);
-    }
-
-    .terminal-header {
-      padding: 12px 20px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .terminal-header h3 {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--text-dim);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .terminal-header h3::before {
-      content: '>';
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--green);
-    }
-
-    .clear-btn {
-      font-size: 0.7rem;
-      padding: 4px 12px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      color: var(--text-dim);
-      cursor: pointer;
-      font-family: inherit;
-      transition: all 0.2s;
-    }
-
-    .clear-btn:hover {
-      color: var(--text);
-      border-color: var(--border-glow);
-    }
-
-    .terminal {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px 20px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
-      line-height: 1.7;
-      background: var(--bg);
-    }
-
-    .log-entry {
-      margin-bottom: 16px;
-      padding: 14px 16px;
-      border-radius: var(--radius-sm);
-      border-left: 3px solid var(--border);
-      background: var(--surface);
-      animation: slideIn 0.3s ease;
-    }
-
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .log-entry.success { border-left-color: var(--green); }
-    .log-entry.error { border-left-color: var(--red); }
-    .log-entry.info { border-left-color: var(--blue); }
-
-    .log-meta {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 8px;
-      font-size: 0.7rem;
-    }
-
-    .log-time { color: var(--text-dim); }
-
-    .log-method {
-      font-weight: 700;
-      padding: 1px 6px;
-      border-radius: 3px;
-      font-size: 0.65rem;
-    }
-
-    .log-method.post { background: var(--green-soft); color: var(--green); }
-    .log-method.get { background: rgba(96,165,250,0.12); color: var(--blue); }
-
-    .log-url { color: var(--text); }
-
-    .log-status {
-      margin-left: auto;
-      font-weight: 600;
-    }
-
-    .log-status.s2xx { color: var(--green); }
-    .log-status.s4xx { color: var(--red); }
-    .log-status.s5xx { color: var(--red); }
-
-    .log-body {
-      color: var(--text-dim);
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    .log-body .json-key { color: var(--blue); }
-    .log-body .json-str { color: var(--green); }
-    .log-body .json-num { color: var(--yellow); }
-    .log-body .json-bool { color: var(--accent); }
-
-    .welcome-msg {
-      color: var(--text-dim);
-      font-size: 0.8rem;
-      text-align: center;
-      padding: 60px 20px;
-      font-family: 'Inter', sans-serif;
-    }
-
-    .welcome-msg .icon {
-      font-size: 2rem;
-      margin-bottom: 12px;
-      display: block;
-    }
-
-    /* ── Spinner ── */
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid transparent;
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Info box ── */
-    .info-box {
-      padding: 10px 14px;
-      border-radius: var(--radius-sm);
-      font-size: 0.78rem;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-    }
-
-    .info-box.tip {
-      background: var(--accent-soft);
-      border: 1px solid rgba(124, 92, 252, 0.13);
-      color: var(--text-dim);
-    }
-
-    /* ── Responsive ── */
-    @media (max-width: 900px) {
-      .app {
-        grid-template-columns: 1fr;
-      }
-      header { padding: 16px; flex-wrap: wrap; gap: 8px; }
-      .tabs { overflow-x: auto; }
-      .tab { padding: 12px 14px; white-space: nowrap; }
-      .tab-content { padding: 16px; }
-      .token-bar { padding: 12px 16px; flex-wrap: wrap; }
-      .panel-left { border-right: none; border-bottom: 1px solid var(--border); max-height: none; }
-      .panel-right { min-height: 400px; }
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Backend Auth · API Tester</title>
+  <meta name="description" content="Interactive tester for the Backend Auth service: sign up, log in and call JWT-protected endpoints from your browser.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f5f5fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b0b12" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Backend Auth · API Tester">
+  <meta property="og:description" content="A Go authentication API with bcrypt, JWT and role-based access, plus a built-in browser tester.">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/app.css">
+  <script src="/theme.js"></script>
+  <script src="/app.js" defer></script>
 </head>
 <body>
-  <header>
-    <h1>Backend Auth Tester</h1>
-    <div class="status-pill connected" aria-label="API host">
-      <span class="dot" aria-hidden="true"></span>
-      <span id="apiHost">localhost</span>
+  <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" class="sr-only" aria-hidden="true" focusable="false">
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-6.5 0-10-7-10-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19M1 1l22 22"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M1 21a8 8 0 0 1 16 0M17 4a4 4 0 0 1 0 8M23 21a8 8 0 0 0-4-6.9"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 17 6-5-6-5M12 19h8"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8M21 3v5h-5"/></symbol>
+  </svg>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="inner">
+      <a class="brand" href="/" aria-label="Backend Auth tester home">
+        <img src="/favicon.svg" alt="" width="32" height="32">
+        <span class="brand-text">
+          <span class="brand-title">Backend Auth</span>
+          <span class="brand-sub">Interactive API tester</span>
+        </span>
+      </a>
+      <span class="health" id="health" data-state="checking" role="status" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="health-label">Checking API…</span>
+        <span class="health-host" id="health-host"></span>
+      </span>
+      <button class="btn btn-ghost btn-icon theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <svg class="icon icon-moon" aria-hidden="true"><use href="#i-moon"/></svg>
+        <svg class="icon icon-sun" aria-hidden="true"><use href="#i-sun"/></svg>
+      </button>
     </div>
   </header>
 
-  <main class="app">
-    <!-- ── Left Panel: Forms ── -->
-    <div class="panel-left">
-      <!-- Token Bar -->
-      <div class="token-bar">
-        <span class="label" id="tokenLabel">JWT TOKEN</span>
-        <div class="token-display empty" id="tokenDisplay" aria-labelledby="tokenLabel" aria-live="polite">No token — login to get one</div>
-      </div>
+  <main id="main" class="layout" tabindex="-1">
+    <div class="stack">
+      <!-- Session -->
+      <section class="card" aria-labelledby="session-heading">
+        <h2 id="session-heading" class="sr-only">Session</h2>
+        <div class="session" id="session" data-state="out">
+          <div class="session-status">
+            <span class="avatar" id="session-avatar" aria-hidden="true">
+              <svg class="icon"><use href="#i-lock"/></svg>
+            </span>
+            <div class="session-text">
+              <p class="session-title" id="session-title">Not signed in</p>
+              <p class="session-meta" id="session-meta">Log in to get a JWT for the protected endpoints.</p>
+              <code class="token" id="session-token" hidden></code>
+            </div>
+          </div>
+          <div class="session-actions">
+            <button class="btn btn-sm" id="btn-copy-token" type="button">
+              <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg> Copy token
+            </button>
+            <button class="btn btn-sm" id="btn-logout" type="button">
+              <svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg> Sign out
+            </button>
+          </div>
+        </div>
+      </section>
 
-      <!-- Tabs -->
-      <div class="tabs" role="tablist" aria-label="Endpoints">
-        <button class="tab active" data-tab="signup" role="tab" id="tabbtn-signup" aria-controls="tab-signup" aria-selected="true">Signup</button>
-        <button class="tab" data-tab="login" role="tab" id="tabbtn-login" aria-controls="tab-login" aria-selected="false" tabindex="-1">Login</button>
-        <button class="tab" data-tab="profile" role="tab" id="tabbtn-profile" aria-controls="tab-profile" aria-selected="false" tabindex="-1">Profile</button>
-        <button class="tab" data-tab="users" role="tab" id="tabbtn-users" aria-controls="tab-users" aria-selected="false" tabindex="-1">Users</button>
-      </div>
+      <!-- Endpoints -->
+      <section class="card" aria-labelledby="endpoints-heading">
+        <h2 id="endpoints-heading" class="sr-only">Endpoints</h2>
+        <div class="tabs" role="tablist" aria-label="Endpoints">
+          <button class="tab" role="tab" id="tab-signup" aria-controls="panel-signup" aria-selected="true" data-tab="signup">Sign up</button>
+          <button class="tab" role="tab" id="tab-login" aria-controls="panel-login" aria-selected="false" tabindex="-1" data-tab="login">Log in</button>
+          <button class="tab" role="tab" id="tab-profile" aria-controls="panel-profile" aria-selected="false" tabindex="-1" data-tab="profile">
+            Profile <svg class="lock" aria-hidden="true"><use href="#i-lock"/></svg>
+          </button>
+          <button class="tab" role="tab" id="tab-users" aria-controls="panel-users" aria-selected="false" tabindex="-1" data-tab="users">
+            Users <svg class="lock" aria-hidden="true"><use href="#i-lock"/></svg>
+          </button>
+        </div>
 
-      <!-- Signup -->
-      <div class="tab-content active" id="tab-signup" role="tabpanel" aria-labelledby="tabbtn-signup">
-        <div class="section-header">
-          <span class="method method-post">POST</span>
-          <span class="endpoint">/signup</span>
+        <!-- Sign up -->
+        <div class="panel" role="tabpanel" id="panel-signup" aria-labelledby="tab-signup">
+          <div class="endpoint"><span class="badge badge-post">POST</span><span class="endpoint-path">/signup</span></div>
+          <p class="panel-intro">Create a regular <strong>user</strong> account. Admin accounts can only be created by the server operator through <code>ADMIN_EMAIL</code>.</p>
+          <div class="alert" id="signup-alert" role="alert" hidden></div>
+          <form class="form" id="form-signup" novalidate>
+            <div class="field">
+              <label for="signup-name">Full name</label>
+              <input class="input" type="text" id="signup-name" name="name" autocomplete="name" maxlength="100" placeholder="Ada Lovelace" aria-describedby="signup-name-error" required>
+              <p class="error-text" id="signup-name-error"></p>
+            </div>
+            <div class="field">
+              <label for="signup-email">Email</label>
+              <input class="input" type="email" id="signup-email" name="email" autocomplete="email" inputmode="email" spellcheck="false" placeholder="ada@example.com" aria-describedby="signup-email-error" required>
+              <p class="error-text" id="signup-email-error"></p>
+            </div>
+            <div class="field">
+              <label for="signup-password">Password</label>
+              <div class="input-wrap">
+                <input class="input" type="password" id="signup-password" name="password" autocomplete="new-password" placeholder="At least 8 characters" aria-describedby="signup-password-hint signup-password-error" required>
+                <button class="btn btn-ghost reveal" type="button" aria-controls="signup-password" aria-pressed="false" aria-label="Show password">
+                  <svg class="icon icon-eye" aria-hidden="true"><use href="#i-eye"/></svg>
+                  <svg class="icon icon-eye-off" aria-hidden="true"><use href="#i-eye-off"/></svg>
+                </button>
+              </div>
+              <p class="hint" id="signup-password-hint">8 to 72 characters. Stored as a bcrypt hash.</p>
+              <p class="error-text" id="signup-password-error"></p>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit" id="btn-signup">
+                <span class="spinner" aria-hidden="true"></span>
+                Create account
+              </button>
+            </div>
+          </form>
         </div>
-        <div class="form-group">
-          <label for="signup-name">Name</label>
-          <input type="text" id="signup-name" placeholder="e.g. Ada Lovelace" autocomplete="name" maxlength="100" />
-        </div>
-        <div class="form-group">
-          <label for="signup-email">Email</label>
-          <input type="email" id="signup-email" placeholder="e.g. ada@example.com" autocomplete="email" />
-        </div>
-        <div class="form-group">
-          <label for="signup-password">Password</label>
-          <input type="password" id="signup-password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" />
-        </div>
-        <div class="info-box tip">
-          New accounts always get the <strong>user</strong> role. Admin accounts are created by the server operator (see <code>ADMIN_EMAIL</code> in the README).
-        </div>
-        <button class="btn btn-primary" id="btn-signup" type="button">
-          Create Account
-        </button>
-      </div>
 
-      <!-- Login -->
-      <div class="tab-content" id="tab-login" role="tabpanel" aria-labelledby="tabbtn-login">
-        <div class="section-header">
-          <span class="method method-post">POST</span>
-          <span class="endpoint">/login</span>
+        <!-- Log in -->
+        <div class="panel" role="tabpanel" id="panel-login" aria-labelledby="tab-login" hidden>
+          <div class="endpoint"><span class="badge badge-post">POST</span><span class="endpoint-path">/login</span></div>
+          <p class="panel-intro">Exchange your email and password for a signed JWT. The token is kept in this browser tab only.</p>
+          <div class="alert" id="login-alert" role="alert" hidden></div>
+          <form class="form" id="form-login" novalidate>
+            <div class="field">
+              <label for="login-email">Email</label>
+              <input class="input" type="email" id="login-email" name="email" autocomplete="username" inputmode="email" spellcheck="false" placeholder="ada@example.com" aria-describedby="login-email-error" required>
+              <p class="error-text" id="login-email-error"></p>
+            </div>
+            <div class="field">
+              <label for="login-password">Password</label>
+              <div class="input-wrap">
+                <input class="input" type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Your password" aria-describedby="login-password-error" required>
+                <button class="btn btn-ghost reveal" type="button" aria-controls="login-password" aria-pressed="false" aria-label="Show password">
+                  <svg class="icon icon-eye" aria-hidden="true"><use href="#i-eye"/></svg>
+                  <svg class="icon icon-eye-off" aria-hidden="true"><use href="#i-eye-off"/></svg>
+                </button>
+              </div>
+              <p class="error-text" id="login-password-error"></p>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit" id="btn-login">
+                <span class="spinner" aria-hidden="true"></span>
+                Log in
+              </button>
+            </div>
+          </form>
         </div>
-        <div class="form-group">
-          <label for="login-email">Email</label>
-          <input type="email" id="login-email" placeholder="e.g. ada@example.com" autocomplete="email" />
-        </div>
-        <div class="form-group">
-          <label for="login-password">Password</label>
-          <input type="password" id="login-password" placeholder="Enter password" autocomplete="current-password" />
-        </div>
-        <button class="btn btn-green" id="btn-login" type="button">
-          Login & Get Token
-        </button>
-      </div>
 
-      <!-- Profile -->
-      <div class="tab-content" id="tab-profile" role="tabpanel" aria-labelledby="tabbtn-profile">
-        <div class="section-header">
-          <span class="method method-get">GET</span>
-          <span class="endpoint">/profile</span>
+        <!-- Profile -->
+        <div class="panel" role="tabpanel" id="panel-profile" aria-labelledby="tab-profile" hidden>
+          <div class="endpoint">
+            <span class="badge badge-get">GET</span><span class="endpoint-path">/profile</span>
+            <span class="badge badge-auth">Bearer token</span>
+          </div>
+          <p class="panel-intro">Returns the account that owns the current token.</p>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="button" id="btn-profile">
+              <span class="spinner" aria-hidden="true"></span>
+              <svg class="icon btn-icon-idle" aria-hidden="true"><use href="#i-refresh"/></svg>
+              Load my profile
+            </button>
+          </div>
+          <div class="result" id="profile-result" aria-live="polite"></div>
         </div>
-        <div class="info-box tip">
-          <span aria-hidden="true">ℹ️</span> Requires a valid JWT token. Login first to get one.
-        </div>
-        <button class="btn btn-blue" id="btn-profile" type="button">
-          Fetch My Profile
-        </button>
-      </div>
 
-      <!-- Users -->
-      <div class="tab-content" id="tab-users" role="tabpanel" aria-labelledby="tabbtn-users">
-        <div class="section-header">
-          <span class="method method-get">GET</span>
-          <span class="endpoint">/users</span>
+        <!-- Users -->
+        <div class="panel" role="tabpanel" id="panel-users" aria-labelledby="tab-users" hidden>
+          <div class="endpoint">
+            <span class="badge badge-get">GET</span><span class="endpoint-path">/users</span>
+            <span class="badge badge-auth">Admin only</span>
+          </div>
+          <p class="panel-intro">Lists every account. Requires a token issued to an <strong>admin</strong>; regular users get <code>403 Forbidden</code>.</p>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="button" id="btn-users">
+              <span class="spinner" aria-hidden="true"></span>
+              <svg class="icon btn-icon-idle" aria-hidden="true"><use href="#i-refresh"/></svg>
+              Load all users
+            </button>
+          </div>
+          <div class="result" id="users-result" aria-live="polite"></div>
         </div>
-        <div class="info-box tip">
-          <span aria-hidden="true">ℹ️</span> Admin only. Log in with the bootstrap admin account to access this endpoint.
-        </div>
-        <button class="btn btn-yellow" id="btn-users" type="button">
-          Fetch All Users
-        </button>
-      </div>
+      </section>
     </div>
 
-    <!-- ── Right Panel: Terminal ── -->
-    <div class="panel-right">
-      <div class="terminal-header">
-        <h3>Response Terminal</h3>
-        <button class="clear-btn" id="btn-clear" type="button">Clear</button>
+    <!-- Response log -->
+    <section class="card log-card" aria-labelledby="log-heading">
+      <div class="card-header">
+        <h2 class="card-title" id="log-heading">
+          <svg class="icon" aria-hidden="true"><use href="#i-terminal"/></svg> Response log
+        </h2>
+        <button class="btn btn-sm btn-ghost" id="btn-clear" type="button" disabled>Clear</button>
       </div>
-      <div class="terminal" id="terminal" role="log" aria-live="polite" aria-label="API responses">
-        <div class="welcome-msg">
-          <span class="icon" aria-hidden="true">⚡</span>
-          API responses will appear here in real-time.<br>
-          Use the forms on the left to make requests.
+      <div class="log" id="log" role="log" aria-label="API responses" tabindex="0">
+        <div class="empty" id="log-empty">
+          <svg class="icon" aria-hidden="true"><use href="#i-terminal"/></svg>
+          <p class="empty-title">No requests yet</p>
+          <p>Raw responses from the API appear here, newest at the bottom.</p>
         </div>
       </div>
-    </div>
+    </section>
   </main>
 
-  <script>
-    const API = '';
-    let jwtToken = '';
+  <footer class="site-footer">
+    <div class="inner">
+      <span>Backend Auth · Go, SQLite, bcrypt and JWT</span>
+      <span>Health check: <a href="/healthz">/healthz</a></span>
+    </div>
+  </footer>
 
-    // ── Tab switching ──
-    document.getElementById('apiHost').textContent = window.location.host || 'localhost';
-
-    const tabs = Array.from(document.querySelectorAll('.tab'));
-    function activateTab(tab) {
-      tabs.forEach(t => {
-        const selected = t === tab;
-        t.classList.toggle('active', selected);
-        t.setAttribute('aria-selected', String(selected));
-        t.tabIndex = selected ? 0 : -1;
-        document.getElementById('tab-' + t.dataset.tab).classList.toggle('active', selected);
-      });
-      tab.focus();
-    }
-    tabs.forEach((tab, i) => {
-      tab.addEventListener('click', () => activateTab(tab));
-      tab.addEventListener('keydown', e => {
-        if (e.key === 'ArrowRight') activateTab(tabs[(i + 1) % tabs.length]);
-        if (e.key === 'ArrowLeft') activateTab(tabs[(i - 1 + tabs.length) % tabs.length]);
-      });
-    });
-
-    // ── Terminal logging ──
-    function escapeHTML(str) {
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    }
-
-    // Escapes first, then highlights, so server data can never inject markup.
-    function syntaxHighlight(json) {
-      if (typeof json !== 'string') json = JSON.stringify(json, null, 2);
-      json = escapeHTML(json).replace(/&quot;/g, '"');
-      return json.replace(/("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
-        function (match) {
-          let cls = 'json-num';
-          if (/^"/.test(match)) {
-            if (/:$/.test(match)) { cls = 'json-key'; }
-            else { cls = 'json-str'; }
-          } else if (/true|false/.test(match)) { cls = 'json-bool'; }
-          return '<span class="' + cls + '">' + match + '</span>';
-        }
-      );
-    }
-
-    function logToTerminal(method, url, status, body, type) {
-      const terminal = document.getElementById('terminal');
-      const welcome = terminal.querySelector('.welcome-msg');
-      if (welcome) welcome.remove();
-
-      const now = new Date().toLocaleTimeString();
-      const statusClass = status < 300 ? 's2xx' : status < 500 ? 's4xx' : 's5xx';
-      const entryClass = status < 300 ? 'success' : 'error';
-
-      let formatted;
-      try {
-        const parsed = typeof body === 'string' ? JSON.parse(body) : body;
-        formatted = syntaxHighlight(parsed);
-      } catch {
-        formatted = escapeHTML(body);
-      }
-
-      const entry = document.createElement('div');
-      entry.className = 'log-entry ' + entryClass;
-      entry.innerHTML = `
-        <div class="log-meta">
-          <span class="log-time">${now}</span>
-          <span class="log-method ${method.toLowerCase()}">${escapeHTML(method)}</span>
-          <span class="log-url">${escapeHTML(url)}</span>
-          <span class="log-status ${statusClass}">${status}</span>
-        </div>
-        <div class="log-body">${formatted}</div>
-      `;
-
-      terminal.appendChild(entry);
-      terminal.scrollTop = terminal.scrollHeight;
-    }
-
-    // ── API call helper ──
-    async function apiCall(method, endpoint, body, useAuth) {
-      const headers = { 'Content-Type': 'application/json' };
-      if (useAuth && jwtToken) {
-        headers['Authorization'] = 'Bearer ' + jwtToken;
-      }
-
-      const opts = { method, headers };
-      if (body) opts.body = JSON.stringify(body);
-
-      try {
-        const res = await fetch(API + endpoint, opts);
-        const text = await res.text();
-        let data;
-        try { data = JSON.parse(text); } catch { data = text; }
-        logToTerminal(method, endpoint, res.status, data);
-        return { status: res.status, data };
-      } catch (err) {
-        logToTerminal(method, endpoint, 0, { error: 'Network error: ' + err.message });
-        return { status: 0, data: null };
-      }
-    }
-
-    // ── Button: set loading state ──
-    function setLoading(btn, loading) {
-      if (loading) {
-        btn.disabled = true;
-        btn.setAttribute('aria-busy', 'true');
-        btn._text = btn.innerHTML;
-        btn.innerHTML = '<span class="spinner" aria-hidden="true"></span> Sending...';
-      } else {
-        btn.disabled = false;
-        btn.removeAttribute('aria-busy');
-        btn.innerHTML = btn._text;
-      }
-    }
-
-    // ── Signup ──
-    document.getElementById('btn-signup').addEventListener('click', async function() {
-      const btn = this;
-      const name = document.getElementById('signup-name').value.trim();
-      const email = document.getElementById('signup-email').value.trim();
-      const password = document.getElementById('signup-password').value;
-
-      if (!name || !email || !password) {
-        logToTerminal('POST', '/signup', 400, { error: 'Please fill all fields' });
-        return;
-      }
-
-      setLoading(btn, true);
-      await apiCall('POST', '/signup', { name, email, password });
-      setLoading(btn, false);
-    });
-
-    // ── Login ──
-    document.getElementById('btn-login').addEventListener('click', async function() {
-      const btn = this;
-      const email = document.getElementById('login-email').value.trim();
-      const password = document.getElementById('login-password').value;
-
-      if (!email || !password) {
-        logToTerminal('POST', '/login', 400, { error: 'Please fill all fields' });
-        return;
-      }
-
-      setLoading(btn, true);
-      const result = await apiCall('POST', '/login', { email, password });
-      setLoading(btn, false);
-
-      if (result.status === 200 && result.data && result.data.token) {
-        jwtToken = result.data.token;
-        const display = document.getElementById('tokenDisplay');
-        display.textContent = jwtToken;
-        display.classList.remove('empty');
-      }
-    });
-
-    // ── Profile ──
-    document.getElementById('btn-profile').addEventListener('click', async function() {
-      const btn = this;
-      if (!jwtToken) {
-        logToTerminal('GET', '/profile', 401, { error: 'No token available. Please login first.' });
-        return;
-      }
-      setLoading(btn, true);
-      await apiCall('GET', '/profile', null, true);
-      setLoading(btn, false);
-    });
-
-    // ── Users ──
-    document.getElementById('btn-users').addEventListener('click', async function() {
-      const btn = this;
-      if (!jwtToken) {
-        logToTerminal('GET', '/users', 401, { error: 'No token available. Please login first.' });
-        return;
-      }
-      setLoading(btn, true);
-      await apiCall('GET', '/users', null, true);
-      setLoading(btn, false);
-    });
-
-    // ── Clear terminal ──
-    document.getElementById('btn-clear').addEventListener('click', () => {
-      const terminal = document.getElementById('terminal');
-      terminal.innerHTML = `
-        <div class="welcome-msg">
-          <span class="icon" aria-hidden="true">⚡</span>
-          Terminal cleared.<br>
-          Make a request to see responses.
-        </div>
-      `;
-    });
-  </script>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

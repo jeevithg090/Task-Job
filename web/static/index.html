@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Interactive tester for the Backend Auth service: sign up, log in, and call JWT-protected endpoints.">
+  <meta name="color-scheme" content="dark">
   <title>Backend Auth — API Tester</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -48,7 +53,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: var(--bg)ee;
+      background: rgba(10, 10, 15, 0.93);
     }
 
     header h1 {
@@ -80,7 +85,7 @@
     .status-pill.connected {
       background: var(--green-soft);
       color: var(--green);
-      border: 1px solid var(--green)33;
+      border: 1px solid rgba(52, 211, 153, 0.2);
     }
 
     .status-pill .dot {
@@ -137,6 +142,19 @@
     }
 
     .tab:hover { color: var(--text); }
+    .tab:focus-visible, .btn:focus-visible, .clear-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
     .tab.active {
       color: var(--accent);
       border-bottom-color: var(--accent);
@@ -262,7 +280,7 @@
       font-family: 'JetBrains Mono', monospace;
     }
 
-    .method-post { background: var(--green-soft); color: var(--green); border: 1px solid var(--green)33; }
+    .method-post { background: var(--green-soft); color: var(--green); border: 1px solid rgba(52, 211, 153, 0.2); }
     .method-get { background: rgba(96,165,250,0.12); color: var(--blue); border: 1px solid rgba(96,165,250,0.2); }
 
     .section-header .endpoint {
@@ -282,7 +300,11 @@
       gap: 12px;
     }
 
-    .token-bar label {
+    .token-bar .label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
       margin: 0;
       white-space: nowrap;
     }
@@ -466,7 +488,7 @@
 
     .info-box.tip {
       background: var(--accent-soft);
-      border: 1px solid var(--accent)22;
+      border: 1px solid rgba(124, 92, 252, 0.13);
       color: var(--text-dim);
     }
 
@@ -475,6 +497,11 @@
       .app {
         grid-template-columns: 1fr;
       }
+      header { padding: 16px; flex-wrap: wrap; gap: 8px; }
+      .tabs { overflow-x: auto; }
+      .tab { padding: 12px 14px; white-space: nowrap; }
+      .tab-content { padding: 16px; }
+      .token-bar { padding: 12px 16px; flex-wrap: wrap; }
       .panel-left { border-right: none; border-bottom: 1px solid var(--border); max-height: none; }
       .panel-right { min-height: 400px; }
     }
@@ -483,102 +510,98 @@
 <body>
   <header>
     <h1>Backend Auth Tester</h1>
-    <div class="status-pill connected">
-      <span class="dot"></span>
-      localhost:8080
+    <div class="status-pill connected" aria-label="API host">
+      <span class="dot" aria-hidden="true"></span>
+      <span id="apiHost">localhost</span>
     </div>
   </header>
 
-  <div class="app">
+  <main class="app">
     <!-- ── Left Panel: Forms ── -->
     <div class="panel-left">
       <!-- Token Bar -->
       <div class="token-bar">
-        <label>JWT TOKEN</label>
-        <div class="token-display empty" id="tokenDisplay">No token — login to get one</div>
+        <span class="label" id="tokenLabel">JWT TOKEN</span>
+        <div class="token-display empty" id="tokenDisplay" aria-labelledby="tokenLabel" aria-live="polite">No token — login to get one</div>
       </div>
 
       <!-- Tabs -->
-      <div class="tabs">
-        <button class="tab active" data-tab="signup">Signup</button>
-        <button class="tab" data-tab="login">Login</button>
-        <button class="tab" data-tab="profile">Profile</button>
-        <button class="tab" data-tab="users">Users</button>
+      <div class="tabs" role="tablist" aria-label="Endpoints">
+        <button class="tab active" data-tab="signup" role="tab" id="tabbtn-signup" aria-controls="tab-signup" aria-selected="true">Signup</button>
+        <button class="tab" data-tab="login" role="tab" id="tabbtn-login" aria-controls="tab-login" aria-selected="false" tabindex="-1">Login</button>
+        <button class="tab" data-tab="profile" role="tab" id="tabbtn-profile" aria-controls="tab-profile" aria-selected="false" tabindex="-1">Profile</button>
+        <button class="tab" data-tab="users" role="tab" id="tabbtn-users" aria-controls="tab-users" aria-selected="false" tabindex="-1">Users</button>
       </div>
 
       <!-- Signup -->
-      <div class="tab-content active" id="tab-signup">
+      <div class="tab-content active" id="tab-signup" role="tabpanel" aria-labelledby="tabbtn-signup">
         <div class="section-header">
           <span class="method method-post">POST</span>
           <span class="endpoint">/signup</span>
         </div>
         <div class="form-group">
-          <label>Name</label>
-          <input type="text" id="signup-name" placeholder="e.g. Jeevith" />
+          <label for="signup-name">Name</label>
+          <input type="text" id="signup-name" placeholder="e.g. Ada Lovelace" autocomplete="name" maxlength="100" />
         </div>
         <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="signup-email" placeholder="e.g. jeevith@gmail.com" />
+          <label for="signup-email">Email</label>
+          <input type="email" id="signup-email" placeholder="e.g. ada@example.com" autocomplete="email" />
         </div>
         <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="signup-password" placeholder="Enter password" />
+          <label for="signup-password">Password</label>
+          <input type="password" id="signup-password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" />
         </div>
-        <div class="form-group">
-          <label>Role</label>
-          <select id="signup-role">
-            <option value="user">user</option>
-            <option value="admin">admin</option>
-          </select>
+        <div class="info-box tip">
+          New accounts always get the <strong>user</strong> role. Admin accounts are created by the server operator (see <code>ADMIN_EMAIL</code> in the README).
         </div>
-        <button class="btn btn-primary" id="btn-signup">
+        <button class="btn btn-primary" id="btn-signup" type="button">
           Create Account
         </button>
       </div>
 
       <!-- Login -->
-      <div class="tab-content" id="tab-login">
+      <div class="tab-content" id="tab-login" role="tabpanel" aria-labelledby="tabbtn-login">
         <div class="section-header">
           <span class="method method-post">POST</span>
           <span class="endpoint">/login</span>
         </div>
         <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="login-email" placeholder="e.g. jeevith@gmail.com" />
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" placeholder="e.g. ada@example.com" autocomplete="email" />
         </div>
         <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="login-password" placeholder="Enter password" />
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="Enter password" autocomplete="current-password" />
         </div>
-        <button class="btn btn-green" id="btn-login">
+        <button class="btn btn-green" id="btn-login" type="button">
           Login & Get Token
         </button>
       </div>
 
       <!-- Profile -->
-      <div class="tab-content" id="tab-profile">
+      <div class="tab-content" id="tab-profile" role="tabpanel" aria-labelledby="tabbtn-profile">
         <div class="section-header">
           <span class="method method-get">GET</span>
           <span class="endpoint">/profile</span>
         </div>
         <div class="info-box tip">
-          ℹ️ Requires a valid JWT token. Login first to get one.
+          <span aria-hidden="true">ℹ️</span> Requires a valid JWT token. Login first to get one.
         </div>
-        <button class="btn btn-blue" id="btn-profile">
+        <button class="btn btn-blue" id="btn-profile" type="button">
           Fetch My Profile
         </button>
       </div>
 
       <!-- Users -->
-      <div class="tab-content" id="tab-users">
+      <div class="tab-content" id="tab-users" role="tabpanel" aria-labelledby="tabbtn-users">
         <div class="section-header">
           <span class="method method-get">GET</span>
           <span class="endpoint">/users</span>
         </div>
         <div class="info-box tip">
-          ℹ️ Admin only. Login as admin to access this endpoint.
+          <span aria-hidden="true">ℹ️</span> Admin only. Log in with the bootstrap admin account to access this endpoint.
         </div>
-        <button class="btn btn-yellow" id="btn-users">
+        <button class="btn btn-yellow" id="btn-users" type="button">
           Fetch All Users
         </button>
       </div>
@@ -588,35 +611,58 @@
     <div class="panel-right">
       <div class="terminal-header">
         <h3>Response Terminal</h3>
-        <button class="clear-btn" id="btn-clear">Clear</button>
+        <button class="clear-btn" id="btn-clear" type="button">Clear</button>
       </div>
-      <div class="terminal" id="terminal">
+      <div class="terminal" id="terminal" role="log" aria-live="polite" aria-label="API responses">
         <div class="welcome-msg">
-          <span class="icon">⚡</span>
+          <span class="icon" aria-hidden="true">⚡</span>
           API responses will appear here in real-time.<br>
           Use the forms on the left to make requests.
         </div>
       </div>
     </div>
-  </div>
+  </main>
 
   <script>
     const API = '';
     let jwtToken = '';
 
     // ── Tab switching ──
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    document.getElementById('apiHost').textContent = window.location.host || 'localhost';
+
+    const tabs = Array.from(document.querySelectorAll('.tab'));
+    function activateTab(tab) {
+      tabs.forEach(t => {
+        const selected = t === tab;
+        t.classList.toggle('active', selected);
+        t.setAttribute('aria-selected', String(selected));
+        t.tabIndex = selected ? 0 : -1;
+        document.getElementById('tab-' + t.dataset.tab).classList.toggle('active', selected);
+      });
+      tab.focus();
+    }
+    tabs.forEach((tab, i) => {
+      tab.addEventListener('click', () => activateTab(tab));
+      tab.addEventListener('keydown', e => {
+        if (e.key === 'ArrowRight') activateTab(tabs[(i + 1) % tabs.length]);
+        if (e.key === 'ArrowLeft') activateTab(tabs[(i - 1 + tabs.length) % tabs.length]);
       });
     });
 
     // ── Terminal logging ──
+    function escapeHTML(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Escapes first, then highlights, so server data can never inject markup.
     function syntaxHighlight(json) {
       if (typeof json !== 'string') json = JSON.stringify(json, null, 2);
+      json = escapeHTML(json).replace(/&quot;/g, '"');
       return json.replace(/("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
         function (match) {
           let cls = 'json-num';
@@ -643,7 +689,7 @@
         const parsed = typeof body === 'string' ? JSON.parse(body) : body;
         formatted = syntaxHighlight(parsed);
       } catch {
-        formatted = body;
+        formatted = escapeHTML(body);
       }
 
       const entry = document.createElement('div');
@@ -651,8 +697,8 @@
       entry.innerHTML = `
         <div class="log-meta">
           <span class="log-time">${now}</span>
-          <span class="log-method ${method.toLowerCase()}">${method}</span>
-          <span class="log-url">${url}</span>
+          <span class="log-method ${method.toLowerCase()}">${escapeHTML(method)}</span>
+          <span class="log-url">${escapeHTML(url)}</span>
           <span class="log-status ${statusClass}">${status}</span>
         </div>
         <div class="log-body">${formatted}</div>
@@ -689,10 +735,12 @@
     function setLoading(btn, loading) {
       if (loading) {
         btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
         btn._text = btn.innerHTML;
-        btn.innerHTML = '<span class="spinner"></span> Sending...';
+        btn.innerHTML = '<span class="spinner" aria-hidden="true"></span> Sending...';
       } else {
         btn.disabled = false;
+        btn.removeAttribute('aria-busy');
         btn.innerHTML = btn._text;
       }
     }
@@ -703,7 +751,6 @@
       const name = document.getElementById('signup-name').value.trim();
       const email = document.getElementById('signup-email').value.trim();
       const password = document.getElementById('signup-password').value;
-      const role = document.getElementById('signup-role').value;
 
       if (!name || !email || !password) {
         logToTerminal('POST', '/signup', 400, { error: 'Please fill all fields' });
@@ -711,7 +758,7 @@
       }
 
       setLoading(btn, true);
-      await apiCall('POST', '/signup', { name, email, password, role });
+      await apiCall('POST', '/signup', { name, email, password });
       setLoading(btn, false);
     });
 
@@ -767,7 +814,7 @@
       const terminal = document.getElementById('terminal');
       terminal.innerHTML = `
         <div class="welcome-msg">
-          <span class="icon">⚡</span>
+          <span class="icon" aria-hidden="true">⚡</span>
           Terminal cleared.<br>
           Make a request to see responses.
         </div>
